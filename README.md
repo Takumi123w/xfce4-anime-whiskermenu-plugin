@@ -2,14 +2,14 @@
 
 ### Compile
 ```
-- sudo pacman -S git meson ninja base-devel pkgconf gtk3 gtk-layer-shell xfce4-panel garcon exo
-- git clone https://github.com/Takumi123w/xfce4-anime-whiskermenu-plugin.git
-- cd ~/xfce4-anime-whiskermenu-plugin/
-- meson setup build --prefix=/usr
-- cd ~/xfce4-anime-whiskermenu-plugin/build
-- ninja
-- sudo ninja install
-- xfce4-panel -r
+sudo pacman -S git meson ninja base-devel pkgconf gtk3 gtk-layer-shell xfce4-panel garcon exo
+git clone https://github.com/Takumi123w/xfce4-anime-whiskermenu-plugin.git
+cd ~/xfce4-anime-whiskermenu-plugin/
+meson setup build --prefix=/usr
+cd ~/xfce4-anime-whiskermenu-plugin/build
+ninja
+sudo ninja install
+xfce4-panel -r
 ```
 
 ### Preview
