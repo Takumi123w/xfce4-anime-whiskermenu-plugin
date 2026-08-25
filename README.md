@@ -1,11 +1,11 @@
 ### Compile
-git clone https://github.com/Takumi123w/xfce4-anime-whiskermenu-plugin.git
-cd ~/xfce4-anime-whiskermenu-plugin/
-meson setup build --prefix=/usr
-cd ~/xfce4-anime-whiskermenu-plugin/build
-ninja
-sudo ninja install
-xfce4-panel -r
+- git clone https://github.com/Takumi123w/xfce4-anime-whiskermenu-plugin.git
+- cd ~/xfce4-anime-whiskermenu-plugin/
+- meson setup build --prefix=/usr
+- cd ~/xfce4-anime-whiskermenu-plugin/build
+- ninja
+- sudo ninja install
+- xfce4-panel -r
 
 ### Preview
 ![Image Screenshot](https://github.com/Takumi123w/xfce4-anime-whiskermenu-plugin/blob/main/screenshot/side_image_preview.png)
