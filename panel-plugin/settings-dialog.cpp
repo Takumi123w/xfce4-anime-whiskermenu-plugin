@@ -711,7 +711,35 @@ GtkWidget* SettingsDialog::init_appearance_tab()
 
 	gtk_size_group_add_widget(label_size_group, label);
 	gtk_size_group_add_widget(size_group, m_profile_shape);
+	
+// Add side image selector
+label = gtk_label_new_with_mnemonic(_("Side ima_ge:"));
+gtk_widget_set_halign(label, GTK_ALIGN_START);
+gtk_grid_attach(menu_table, label, 0, 6, 1, 1);
 
+m_side_image = gtk_file_chooser_button_new(_("Select Side Image"), GTK_FILE_CHOOSER_ACTION_OPEN);
+gtk_widget_set_halign(m_side_image, GTK_ALIGN_START);
+gtk_widget_set_hexpand(m_side_image, true);
+if (!m_settings->side_image.empty())
+{
+	gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(m_side_image), m_settings->side_image);
+}
+gtk_grid_attach(menu_table, m_side_image, 1, 6, 1, 1);
+gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_side_image);
+
+connect(m_side_image, "file-set",
+	[this](GtkFileChooserButton* widget)
+	{
+		gchar* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(widget));
+		if (filename)
+		{
+			m_settings->side_image = filename;
+			g_free(filename);
+		}
+	});
+
+gtk_size_group_add_widget(label_size_group, label);
+gtk_size_group_add_widget(size_group, m_side_image);
 
 	// Create panel button section
 	GtkGrid* panel_table = GTK_GRID(gtk_grid_new());

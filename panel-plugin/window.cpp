@@ -163,8 +163,14 @@ WhiskerMenu::Window::Window(Settings* settings, Plugin* plugin) :
 
 	// Create the border of the window
 	GtkWidget* frame = gtk_frame_new(nullptr);
-	gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_OUT);
+	gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_NONE);
 	gtk_container_add(GTK_CONTAINER(m_window), frame);
+
+	GtkCssProvider* border_css = gtk_css_provider_new();
+	gtk_css_provider_load_from_data(border_css, "border { border-right: 0px; }", -1, nullptr);
+	gtk_style_context_add_provider(gtk_widget_get_style_context(frame),
+			GTK_STYLE_PROVIDER(border_css), GTK_STYLE_PROVIDER_PRIORITY_USER);
+	g_object_unref(border_css);
 
 	// Create window contents stack
 	m_window_stack = GTK_STACK(gtk_stack_new());
@@ -281,16 +287,23 @@ WhiskerMenu::Window::Window(Settings* settings, Plugin* plugin) :
 		gtk_box_pack_start(m_commands_box, command, false, false, 0);
 	}
 
+	// Inner column holds everything EXCEPT the side image: title row,
+	// search row, and launcher contents. Keeping these in their own box
+	// (instead of packed directly into m_vbox) means they are sized to
+	// the left of the image column only, so the search bar and command
+	// buttons never extend under the image.
+	m_left_column = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 6));
+
 	// Create box for packing username and commands
 	m_title_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6));
-	gtk_box_pack_start(m_vbox, GTK_WIDGET(m_title_box), false, false, 0);
+	gtk_box_pack_start(m_left_column, GTK_WIDGET(m_title_box), false, false, 0);
 	gtk_box_pack_start(m_title_box, m_profile->get_picture(), false, false, 0);
 	gtk_box_pack_start(m_title_box, m_profile->get_username(), true, true, 0);
 	gtk_box_pack_start(m_title_box, GTK_WIDGET(m_commands_box), false, false, 0);
 
 	// Add search to layout
 	m_search_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6));
-	gtk_box_pack_start(m_vbox, GTK_WIDGET(m_search_box), false, true, 0);
+	gtk_box_pack_start(m_left_column, GTK_WIDGET(m_search_box), false, true, 0);
 	gtk_box_pack_start(m_search_box, GTK_WIDGET(m_search_entry), true, true, 0);
 
 	// Create box for packing launcher pages and sidebar
@@ -300,7 +313,24 @@ WhiskerMenu::Window::Window(Settings* settings, Plugin* plugin) :
 	gtk_grid_set_row_spacing(m_contents_box, 0);
 	gtk_stack_add_named(m_contents_stack, GTK_WIDGET(m_contents_box), "contents");
 	gtk_stack_add_named(m_contents_stack, GTK_WIDGET(search_results), "search");
-	gtk_box_pack_start(m_vbox, GTK_WIDGET(m_contents_stack), true, true, 0);
+
+	gtk_box_pack_start(m_left_column, GTK_WIDGET(m_contents_stack), true, true, 0);
+
+	// Create side image panel
+	m_side_image = gtk_image_new();
+	update_side_image();
+	gtk_widget_set_valign(m_side_image, GTK_ALIGN_END);
+	gtk_widget_set_halign(m_side_image, GTK_ALIGN_END);
+	gtk_widget_set_name(m_side_image, "whiskermenu-side-image");
+
+	// Wrap the left column and image together, side by side, so the image
+	// spans the FULL height (title + search + contents), and update_layout()
+	// can reorder this pair as one unit.
+	m_contents_wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	gtk_box_pack_start(GTK_BOX(m_contents_wrapper), GTK_WIDGET(m_left_column), true, true, 0);
+	gtk_box_pack_start(GTK_BOX(m_contents_wrapper), m_side_image, false, false, 0);
+
+	gtk_box_pack_start(m_vbox, m_contents_wrapper, true, true, 0);
 
 	// Create box for packing categories horizontally
 	m_categories_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
@@ -458,9 +488,13 @@ void WhiskerMenu::Window::show(const Position position)
 
 	// Handle switching view types
 	m_search_results->update_view();
-	m_favorites->update_view();
-	m_recent->update_view();
-	m_applications->update_view();
+ 	m_favorites->update_view();
+ 	m_recent->update_view();
+ 	m_applications->update_view();
+
+ 	update_side_image();
+	
+	gtk_image_set_from_file(GTK_IMAGE(m_side_image), static_cast<const char*>(m_settings->side_image));
 
 	// Handle showing tooltips
 	if (m_settings->launcher_show_tooltip)
@@ -916,15 +950,7 @@ void WhiskerMenu::Window::on_screen_changed(GtkWidget* widget)
 {
 	GdkScreen* screen = gtk_widget_get_screen(widget);
 	GdkVisual* visual = gdk_screen_get_rgba_visual(screen);
-	if (!visual || (m_settings->menu_opacity == 100))
-	{
-		visual = gdk_screen_get_system_visual(screen);
-		m_supports_alpha = false;
-	}
-	else
-	{
-		m_supports_alpha = true;
-	}
+	m_supports_alpha = true;
 	gtk_widget_set_visual(widget, visual);
 }
 
@@ -949,7 +975,27 @@ gboolean WhiskerMenu::Window::on_draw_event(GtkWidget* widget, cairo_t* cr)
 		cairo_surface_t* background = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
 		cairo_t* cr_background = cairo_create(background);
 		cairo_set_operator(cr_background, CAIRO_OPERATOR_SOURCE);
-		gtk_render_background(context, cr_background, 0.0, 0.0, width, height);
+
+		// Only paint background to the left of the side image column,
+		// so the top bar and search bar stop before the image instead
+		// of running behind it top-to-bottom.
+		if (gtk_widget_get_visible(m_side_image))
+		{
+			int img_x = 0, img_y = 0;
+			gtk_widget_translate_coordinates(m_side_image, widget, 0, 0, &img_x, &img_y);
+			const int img_width = gtk_widget_get_allocated_width(m_side_image);
+
+			cairo_save(cr_background);
+			cairo_rectangle(cr_background, 0, 0, img_x + (img_width / 2), height);
+			cairo_clip(cr_background);
+			gtk_render_background(context, cr_background, 0.0, 0.0, width, height);
+			cairo_restore(cr_background);
+		}
+		else
+		{
+			gtk_render_background(context, cr_background, 0.0, 0.0, width, height);
+		}
+
 		cairo_destroy(cr_background);
 
 		cairo_set_source_surface(cr, background, 0.0, 0.0);
@@ -1058,6 +1104,7 @@ bool WhiskerMenu::Window::set_size(int width, int height)
 		m_geometry.height = height;
 		gtk_widget_set_size_request(GTK_WIDGET(m_window), m_geometry.width, m_geometry.height);
 		gtk_window_resize(m_window, 1, 1);
+		update_side_image();
 		resized = true;
 	}
 	return resized;
@@ -1143,6 +1190,31 @@ void WhiskerMenu::Window::search()
 }
 
 //-----------------------------------------------------------------------------
+
+void WhiskerMenu::Window::update_side_image()
+{
+	if (xfce_str_is_empty(m_settings->side_image))
+	{
+		gtk_image_clear(GTK_IMAGE(m_side_image));
+		return;
+	}
+
+	GError* error = nullptr;
+	GdkPixbuf* pixbuf = gdk_pixbuf_new_from_file_at_scale(m_settings->side_image, -1, m_geometry.height, true, &error);
+	if (pixbuf)
+	{
+		gtk_image_set_from_pixbuf(GTK_IMAGE(m_side_image), pixbuf);
+		g_object_unref(pixbuf);
+	}
+	else
+	{
+		if (error)
+		{
+			g_error_free(error);
+		}
+		gtk_image_set_from_file(GTK_IMAGE(m_side_image), static_cast<const char*>(m_settings->side_image));
+	}
+}
 
 void WhiskerMenu::Window::update_layout()
 {
@@ -1337,30 +1409,32 @@ void WhiskerMenu::Window::update_layout()
 	g_object_unref(m_panels_stack);
 	g_object_unref(m_categories_box);
 
-	// Arrange vertical order of header, applications, and search
+	// Arrange vertical order of header, applications, and search within
+	// the left column. The side image in m_contents_wrapper always spans
+	// the full height regardless of this order.
 	if (m_layout_search_alternate && m_layout_profile_alternate)
 	{
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_contents_stack), 0);
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_search_box), 1);
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_title_box), 2);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_contents_stack), 0);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_search_box), 1);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_title_box), 2);
 	}
 	else if (m_layout_profile_alternate)
 	{
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_search_box), 0);
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_contents_stack), 1);
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_title_box), 2);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_search_box), 0);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_contents_stack), 1);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_title_box), 2);
 	}
 	else if (m_layout_search_alternate)
 	{
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_title_box), 0);
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_contents_stack), 1);
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_search_box), 2);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_title_box), 0);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_contents_stack), 1);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_search_box), 2);
 	}
 	else
 	{
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_title_box), 0);
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_search_box), 1);
-		gtk_box_reorder_child(m_vbox, GTK_WIDGET(m_contents_stack), 2);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_title_box), 0);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_search_box), 1);
+		gtk_box_reorder_child(m_left_column, GTK_WIDGET(m_contents_stack), 2);
 	}
 
 	// Handle size group to category buttons

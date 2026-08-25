@@ -86,6 +86,7 @@ private:
 	GtkWidget* m_position_commands_alternate;
 	GtkWidget* m_position_profile_alternate;
 	GtkWidget* m_profile_shape;
+	GtkWidget* m_side_image;
 	GtkWidget* m_menu_width;
 	GtkWidget* m_menu_height;
 

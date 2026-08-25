@@ -304,7 +304,7 @@ public:
 	StringList recent;
 
 	String custom_menu_file;
-
+	String side_image;
 	String button_title;
 	String button_icon_name;
 	Boolean button_title_visible;

@@ -112,6 +112,7 @@ private:
 	void show_default_page();
 	void search();
 	void update_layout();
+	void update_side_image();
 
 private:
 	Settings* const m_settings;
@@ -127,6 +128,9 @@ private:
 	GtkBox* m_commands_box;
 	GtkBox* m_search_box;
 	GtkStack* m_contents_stack;
+	GtkWidget* m_contents_wrapper;
+	GtkWidget* m_frame;
+	GtkWidget* m_side_image; 
 	GtkGrid* m_contents_box;
 	GtkBox* m_categories_box;
 	GtkStack* m_panels_stack;
@@ -149,6 +153,7 @@ private:
 	ApplicationsPage* m_applications;
 
 	GtkScrolledWindow* m_sidebar;
+	GtkBox* m_left_column;
 	GtkBox* m_category_buttons;
 	CategoryButton* m_default_button;
 	GtkSizeGroup* m_sidebar_size_group;

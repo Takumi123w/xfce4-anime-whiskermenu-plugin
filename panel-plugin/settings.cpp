@@ -45,7 +45,7 @@ Settings::Settings(Plugin* plugin) :
 	recent(this, "/recent", { }),
 
 	custom_menu_file(this, "/custom-menu-file"),
-
+	side_image(this, "/side-image", "/usr/share/pixmaps/whiskermenu/side.png"),
 	button_title(this, "/button-title", m_button_title_default),
 	button_icon_name(this, "/button-icon", "org.xfce.panel.whiskermenu"),
 	button_title_visible(this, "/show-button-title", false),
@@ -205,6 +205,7 @@ void Settings::load(const gchar* file, bool is_default)
 	recent.load(rc, is_default);
 
 	custom_menu_file.load(rc, is_default);
+	side_image.load(rc, is_default);
 
 	button_title.load(rc, is_default);
 	button_icon_name.load(rc, is_default);
@@ -391,6 +392,7 @@ void Settings::property_changed(const gchar* property, const GValue* value)
 	}
 
 	else if (custom_menu_file.load(property, value)
+			|| side_image.load(property, value)
 			|| launcher_show_tooltip.load(property, value)
 			|| launcher_icon_size.load(property, value)
 			|| category_hover_activate.load(property, value)
