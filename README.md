@@ -1,6 +1,7 @@
 # Anime Whiskermenu Plugin
 
 ### Compile
+,,,
 - sudo pacman -S git meson ninja base-devel pkgconf gtk3 gtk-layer-shell xfce4-panel garcon exo
 - git clone https://github.com/Takumi123w/xfce4-anime-whiskermenu-plugin.git
 - cd ~/xfce4-anime-whiskermenu-plugin/
@@ -9,6 +10,7 @@
 - ninja
 - sudo ninja install
 - xfce4-panel -r
+,,,
 
 ### Preview
 ![Image Screenshot](https://github.com/Takumi123w/xfce4-anime-whiskermenu-plugin/blob/main/screenshot/side_image_preview.png)
