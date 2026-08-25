@@ -1,6 +1,6 @@
-# Preview
+### Preview
 ![Image Screenshot](https://github.com/Takumi123w/xfce4-anime-whiskermenu-plugin/blob/main/screenshot/side_image_preview.png)
-# Settings
+### Settings
 ![Image Screenshot](https://github.com/Takumi123w/xfce4-anime-whiskermenu-plugin/blob/main/screenshot/settings.png)
 
 Website
